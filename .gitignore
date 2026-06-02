@@ -1,0 +1,35 @@
+# ===== Build Artifacts =====
+node_modules/
+dist/
+build/
+.pio/
+__pycache__/
+*.pyc
+
+# ===== IDE / Editor =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== Environment / Secrets =====
+.env
+.env.*
+
+# ===== Claude Code / AI Tools =====
+.claude/
+.opencode/
+.cursor/
+.omc/
+.superpowers/
+
+# ===== Temp Files =====
+*.tmp
+.tmp_*
+/tmp-*
+
+# ===== Debug Logs =====
+logs/
