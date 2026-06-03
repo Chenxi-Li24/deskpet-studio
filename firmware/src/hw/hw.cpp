@@ -11,18 +11,10 @@ static void die(const char* what) {
 
 void hwInit() {
   Serial.begin(115200);
-  delay(500);
+  delay(200);  // 缩短延时, 加快启动
   Serial.println("\n=== DeskPet ESP32-S3 boot ===");
 
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  Wire.setClock(400000);
-
   if (!hwDisplayInit())  die("display");
-  if (!hwInputInit())    die("input");
-  if (!hwImuInit())      die("imu");
-  if (!hwPowerInit())    die("power");
-  if (!hwAudioInit())    die("audio");
-  if (!hwRtcInit())      die("rtc");
 
   Serial.println("hwInit OK");
 }

@@ -1,6 +1,7 @@
 // src/hw/rtc.cpp — 软件时钟, BLE 桥接同步
 
 #include "hw/rtc.h"
+#include <Arduino.h>
 #include <time.h>
 
 static time_t   s_epoch  = 0;

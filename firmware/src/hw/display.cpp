@@ -11,7 +11,7 @@ static Arduino_Canvas*  s_canvas = nullptr;
 static const uint8_t BRIGHT_LUT[5] = { 10, 64, 128, 192, 255 };
 
 bool hwDisplayInit() {
-  s_bus = new Arduino_HWSPI(PIN_LCD_DC, PIN_LCD_CS);
+  s_bus = new Arduino_HWSPI(PIN_LCD_DC, PIN_LCD_CS);  // CS=GPIO2(虚拟), 硬件CS已接GND
   s_gfx = new Arduino_ST7789(s_bus, PIN_LCD_RST, 0, false,
                              LCD_PHYS_W, LCD_PHYS_H, 0, 20);
   if (!s_gfx->begin()) {
@@ -30,7 +30,7 @@ bool hwDisplayInit() {
   // 背光 PWM
   ledcSetup(0, 5000, 8);
   ledcAttachPin(PIN_LCD_BL, 0);
-  ledcWrite(0, 192);
+  ledcWrite(0, 255);  // 背光最大
 
   Serial.printf("hwDisplay: ST7789V %dx%d OK\n", LCD_PHYS_W, LCD_PHYS_H);
   return true;

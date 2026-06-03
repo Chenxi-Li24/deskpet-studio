@@ -5,12 +5,19 @@
 #pragma once
 
 // ── SPI 屏幕 (ST7789V 4-wire SPI Mode 3) ──
+// ESP32-S3-Pico: GPIO0-13 可用, GPIO14-16 跳线
+// CS → GND 硬件接地, GPIO2 虚拟CS(不接线, 库需要一个有效引脚号)
+// RST → GPIO10 (原 CS 省出)
 #define PIN_LCD_SCLK  12
 #define PIN_LCD_MOSI  11
-#define PIN_LCD_CS    10
+#define PIN_LCD_CS    2
 #define PIN_LCD_DC    13
-#define PIN_LCD_RST   14
+#define PIN_LCD_RST   10
 #define PIN_LCD_BL    9
+
+// ── 板载 WS2812 RGB LED ──
+#define PIN_WS2812    21
+#define WS2812_NUM    1
 
 // ── I2C 总线 ──
 #define PIN_I2C_SDA   4

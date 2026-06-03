@@ -4,7 +4,10 @@
 #include "hw/pins.h"
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_CST8xx.h>
+// 测试模式禁用触摸库
+#if 0
+#include <Adafruit_CST8XX.h>
+#endif
 
 static HwBtn  s_btnA, s_btnB;
 static HwEnc  s_enc1, s_enc2;
@@ -14,9 +17,12 @@ static volatile int8_t s_enc1Delta = 0;
 static volatile int8_t s_enc2Delta = 0;
 
 // ── CST816T ──
-static Adafruit_CST8xx s_cst;
+// 测试模式: CST816T 全部禁用
+#if 0
+static Adafruit_CST8XX s_cst;
 static volatile bool   s_tpIrq = false;
 static void IRAM_ATTR tpISR() { s_tpIrq = true; }
+#endif
 
 // ── 编码器 CLK 中断 ──
 static void IRAM_ATTR enc1ISR() {
@@ -34,7 +40,8 @@ bool hwInputInit() {
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(400000);
 
-  // --- CST816T 触摸 ---
+  // --- CST816T 触摸 (测试禁用) ---
+#if 0
   pinMode(PIN_TP_RST, OUTPUT);
   digitalWrite(PIN_TP_RST, LOW);  delay(10);
   digitalWrite(PIN_TP_RST, HIGH); delay(50);
@@ -46,6 +53,7 @@ bool hwInputInit() {
     attachInterrupt(digitalPinToInterrupt(PIN_TP_INT), tpISR, FALLING);
     Serial.println("hwInput: CST816T OK");
   }
+#endif
 
   // --- 编码器1 ---
   pinMode(PIN_ENC1_CLK, INPUT_PULLUP);
@@ -66,13 +74,16 @@ bool hwInputInit() {
 void hwInputUpdate() {
   uint32_t now = millis();
 
-  // --- 触摸屏 ---
+  // --- 触摸屏 (测试禁用) ---
+#if 0
   if (s_tpIrq || s_touch.down) {
     s_tpIrq = false;
     if (s_cst.touched()) {
       s_touch.justPressed  = !s_touch.down;
       s_touch.justReleased = false;
-      s_cst.getPoint(&s_touch.x, &s_touch.y, nullptr, nullptr);
+      CST_TS_Point p = s_cst.getPoint();
+      s_touch.x = p.x;
+      s_touch.y = p.y;
 
       int dx = s_touch.x - (LCD_PHYS_W - HW_W) / 2;
       int dy = s_touch.y - (LCD_PHYS_H - HW_H) / 2;
@@ -85,6 +96,7 @@ void hwInputUpdate() {
       s_touch.justPressed  = false;
     }
   }
+#endif
 
   // --- 编码器1 SW → BtnA ---
   bool sw1 = !digitalRead(PIN_ENC1_SW);

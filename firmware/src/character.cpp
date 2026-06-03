@@ -280,7 +280,7 @@ void characterClose() {
 void characterInvalidate() {
   if (!loaded) return;
   if (textMode) {
-    _tgt->fillSprite(pal.bg);
+    _tgt->fillScreen(pal.bg);
     uint8_t s = curState; curState = 0xFF;
     characterSetState(s);
     return;
@@ -298,7 +298,7 @@ void characterSetState(uint8_t s) {
     curState = s;
     textFrame = 0;
     textNext = 0;
-    _tgt->fillSprite(pal.bg);
+    _tgt->fillScreen(pal.bg);
     return;
   }
 
@@ -319,7 +319,7 @@ void characterSetState(uint8_t s) {
     gifW = gif.getCanvasWidth();
     gifH = gif.getCanvasHeight();
     gifPlace();
-    _tgt->fillSprite(pal.bg);   // bias upward, leave room for HUD
+    _tgt->fillScreen(pal.bg);   // bias upward, leave room for HUD
     nextFrameAt = 0;
     variantStartedMs = millis();
     Serial.printf("[char] %s: %dx%d @ (%d,%d) heap=%u\n",

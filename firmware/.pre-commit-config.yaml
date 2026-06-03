@@ -1,0 +1,45 @@
+# Pre-commit hooks — 代码提交前自动检查
+# 安装: cd deskpet-firmware && pre-commit install
+# 手动全量检查: pre-commit run --all-files
+
+repos:
+  # 基础检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  # C++ 格式化
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.0
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cpp, h, hpp]
+        args: ['-style=file']
+
+  # C++ 静态分析 (只查修改过的文件)
+  - repo: https://github.com/pre-commit/mirrors-cppcheck
+    rev: v2.16.0
+    hooks:
+      - id: cppcheck
+        args: [
+          '--enable=warning,performance,portability',
+          '--suppress=missingIncludeSystem',
+          '--suppress=unusedFunction',
+          '--inline-suppr',
+        ]
+
+  # 提交信息规范检查
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.6.0
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [commit-msg]
