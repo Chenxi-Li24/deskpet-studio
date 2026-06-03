@@ -263,6 +263,38 @@ inline void speciesIdxSave(uint8_t idx) {
   _prefs.end();
 }
 
+// ── WiFi Credentials (NVS "buddy" namespace) ──────────────────────────
+
+static char _wifiSsid[33] = "";
+static char _wifiPass[65] = "";
+
+inline void wifiCredLoad() {
+  _prefs.begin("buddy", true);
+  _prefs.getString("w_ssid", _wifiSsid, sizeof(_wifiSsid));
+  _prefs.getString("w_pass", _wifiPass, sizeof(_wifiPass));
+  _prefs.end();
+}
+
+inline void wifiCredSave(const char* ssid, const char* pass) {
+  if (ssid) { strncpy(_wifiSsid, ssid, sizeof(_wifiSsid)-1); _wifiSsid[sizeof(_wifiSsid)-1]=0; }
+  if (pass) { strncpy(_wifiPass, pass, sizeof(_wifiPass)-1); _wifiPass[sizeof(_wifiPass)-1]=0; }
+  _prefs.begin("buddy", false);
+  _prefs.putString("w_ssid", _wifiSsid);
+  _prefs.putString("w_pass", _wifiPass);
+  _prefs.end();
+}
+
+inline void wifiCredClear() {
+  _wifiSsid[0] = 0; _wifiPass[0] = 0;
+  _prefs.begin("buddy", false);
+  _prefs.putString("w_ssid", "");
+  _prefs.putString("w_pass", "");
+  _prefs.end();
+}
+
+inline const char* wifiCredSsid()   { return _wifiSsid; }
+inline bool        wifiCredHas()    { return _wifiSsid[0] != 0; }
+
 inline Settings& settings() { return _settings; }
 
 inline const Stats& stats() { return _stats; }

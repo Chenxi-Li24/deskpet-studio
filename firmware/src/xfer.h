@@ -72,6 +72,7 @@ const char* petName();
 void ownerSet(const char* name);
 const char* ownerName();
 #include "stats.h"
+#include "wifi_manager.h"
 #include "hw/power.h"
 
 inline bool xferCommand(JsonDocument& doc) {
@@ -106,6 +107,15 @@ inline bool xferCommand(JsonDocument& doc) {
     const char* n = doc["name"];
     if (n) ownerSet(n);
     _xAck("owner", n != nullptr);
+    return true;
+  }
+
+  if (strcmp(cmd, "wifi_set") == 0) {
+    const char* ssid = doc["ssid"];
+    const char* pass = doc["pass"];
+    if (!ssid) { _xAck("wifi_set", false); return true; }
+    wifiMgrConnect(ssid, pass ? pass : "");
+    _xAck("wifi_set", true);
     return true;
   }
 
