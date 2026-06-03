@@ -363,3 +363,56 @@ pio run -t erase && pio run -t upload  # 完全擦除重烧
 2. **ESP32-S3 形态?** → 裸模块 (需焊转接板) 还是已有开发板?
 3. **AI 语音模块型号?** → SU-03T / ASRPRO / DFPlayer / 其他?
 4. **要不要直接开始面包板?** → 我可以立即帮你写 hw/ 层全部代码
+
+---
+
+## 进度日志
+
+### 2026-06-03 / 06-04 — Web 控制面板最小测试 ✅
+
+**完成内容：**
+- [x] WiFi 状态机 (`wifi_manager.h/.cpp`) — 自动连接、重试(3次/15s超时/30s冷却)、异步扫描
+- [x] NVS 持久化 WiFi 凭证 (`stats.h` — `w_ssid`, `w_pass` key)
+- [x] Async Web 服务器 (ESPAsyncWebServer 3.x, port 80)
+- [x] 8 个 REST API: `/api/status`(GET), `/api/display`, `/api/brightness`, `/api/sound`, `/api/name`, `/api/species`, `/api/wifi`, `/api/beep`(POST), `/api/log`(GET)
+- [x] mDNS (`deskpet.local`) + CORS 全放通
+- [x] 环形日志缓冲区 (100行, 128B/行) → `/api/log`
+- [x] BLE 配网命令 `wifi_set` (`xfer.h`)
+- [x] WS2812 LED 状态指示 (蓝=等待, 黄=连接中, 绿=OK, 红=失败)
+- [x] Web UI 占位页 (`data/web/index.html` → LittleFS)
+- [x] 最小化编译 — `build_src_filter` 排除 buddies/character/IMU/ESP-NOW/encoders
+- [x] 推送 GitHub (`deskpet-studio`, commit `4c89e01`)
+
+**验证通过：**
+- `curl 192.168.31.158/api/status` → 200 JSON ✅
+- `curl -X POST .../api/beep -d '{"freq":440,"dur":200}'` → 蜂鸣器响 ✅
+- LED 绿色 (WiFi OK) ✅
+- 烧录: RAM 24.4% (80KB), Flash 23.4% (1.47MB) ✅
+
+**遇到的问题：**
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| PSRAM init failed → 无限重启 | 实际硬件无 PSRAM，但编译标记了 `BOARD_HAS_PSRAM` | 从 `platformio.ini` 移除 `-DBOARD_HAS_PSRAM` 和 `board_build.psram_type` |
+| WiFi+BLE 共存 crash (`abort()`) | `WiFi.setSleep(false)` 禁用了 ESP-IDF 必需的 modem sleep | 删除 `WiFi.setSleep(false)`，让 ESP-IDF 自动管理 |
+| ESPAsyncWebServer 库找不到 | 注册表名不同 | 改用 `esp32async/ESPAsyncWebServer @ ^3.7.0` |
+| `ArJsonRequestHandler` 未定义 | 3.x API 变化，旧回调签名废弃 | 使用 `server.on(path, method, callback)` + `AsyncCallbackJsonWebHandler` 新 API |
+| JSON 反斜杠转义失败 | Bash heredoc / Write 工具 / Python -c 多次消费反斜杠 | 用十六进制常量 `0x5C`(\\)、`0x22`(") 代替字面量 |
+| GitHub HTTPS 被阻断 | GFW 封锁 443 端口 | 改用 SSH (端口22) + ED25519 密钥 |
+| mDNS `deskpet.local` Windows 无法解析 | Windows 无原生 Bonjour 支持 | 使用 IP 直连 `192.168.31.158` |
+| 硬编码 WiFi 密码推上 GitHub | 默认凭证写死在代码中 | amend commit + force push 清除历史 |
+
+**关键认知：**
+- **NVS = Flash**，断电数据不丢；ESP32 Preferences 库写的是 Flash 分区
+- **WiFi + BLE 共存**时，ESP-IDF 强制要求 WiFi modem sleep 开启；关闭会导致 `abort()`
+- ESPAsyncWebServer 3.x JSON body 回调签名为 `void(AsyncWebServerRequest*, JsonVariant&)`
+- Windows 环境下工具链对反斜杠的转义处理不一致，用十六进制常量更可靠
+
+**下一步 (按顺序逐步加回模块)：**
+1. `hw/input.cpp` — 编码器输入
+2. `hw/imu.cpp` — MPU6050 摇晃检测
+3. `hw/espnow_bridge.cpp` — ESP-NOW 键盘桥接
+4. `ble_bridge.cpp` — BLE NUS (Claude Desktop 连接)
+5. `character.cpp` — GIF 角色动画
+6. `buddies/` — 18 种 ASCII 宠物
+7. 完整 Web UI 仪表盘

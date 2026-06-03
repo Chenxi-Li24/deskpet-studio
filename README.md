@@ -22,14 +22,16 @@ deskpet-studio/
 
 | 特性 | 详情 |
 |------|------|
-| **MCU** | ESP32-S3-WROOM-1 (N16R8, 16MB Flash) |
+| **MCU** | ESP32-S3-WROOM-1 (N16R8, 16MB Flash, 无 PSRAM) |
 | **显示屏** | ST7789 1.69" 240×280 IPS (P169H002-CTP) |
 | **触摸** | CST816T I2C 电容触控 |
 | **IMU** | MPU6050 (I2C, 3.3V) |
 | **输入** | EC11 旋转编码器 ×2 |
 | **灯光** | WS2812-2020 RGB LED ×2 |
 | **音频** | 蜂鸣器 + CI1302 语音识别模块 |
-| **通信** | BLE (Nordic UART Service) |
+| **通信** | BLE (Nordic UART) + **WiFi 802.11n** |
+| **WiFi** | STA 模式，NVS 凭证存储，自动重连，WiFi 扫描，BLE 配网 |
+| **Web** | Async HTTP Server (:80)，8 个 REST API，mDNS，CORS，LittleFS 静态文件 |
 | **框架** | PlatformIO + Arduino |
 | **角色** | 20+ 宠物 (猫/狗/龙/鸭/鹅/猫头鹰/企鹅/兔/龟等) |
 
