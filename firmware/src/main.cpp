@@ -7,6 +7,7 @@
 #include <BLE2902.h>
 #include <WiFi.h>
 #include "hw/pins.h"
+#include "hw/input.h"
 #include "wifi_manager.h"
 #include "web_server.h"
 
@@ -128,7 +129,10 @@ void setup() {
   // 5. Web server (async — serves REST API when WiFi connects)
   webServerInit();
 
-  // 6. Ready
+  // 6. Input — EC11 encoder
+  hwInputInit();
+
+  // 7. Ready
   Serial.println("=== Ready ===");
   ledSet(0, 0, 255, 32);  // Blue = waiting for WiFi
 }
@@ -141,16 +145,37 @@ void loop() {
   // 1. WiFi state machine
   wifiMgrTick();
 
-  // 2. LED update (500ms interval)
+  // 2. Input — poll encoder
+  hwInputUpdate();
+
+  // 3. LED update + Encoder print (500ms interval)
   if (now - lastLed > 500) {
     lastLed = now;
+
+    // --- Encoder debug ---
+    HwEnc enc = hwEnc1();
+    if (enc.delta != 0 || enc.justPressed || enc.pressed) {
+      Serial.printf("ENC1: delta=%+d btn=%d\n", enc.delta, enc.pressed);
+    }
+
+    // --- LED ---
+    const char* cs = webClawdState();
     WifiMgrState st = wifiMgrState();
-    switch (st) {
-      case WM_IDLE:         ledBreath(0, 0, 255);   break; // Blue breath = waiting
-      case WM_AUTO_CONNECT:
-      case WM_CONNECTING:   ledSet(255, 255, 0, 32); break; // Yellow = connecting
-      case WM_OK:           ledBreath(0, 255, 0);    break; // Green breath = OK
-      case WM_FAIL:         ledBreath(255, 0, 0);    break; // Red breath = fail
+    if (st != WM_OK) {
+      switch (st) {
+        case WM_IDLE:         ledBreath(0, 0, 255);   break; // Blue breath = waiting
+        case WM_AUTO_CONNECT:
+        case WM_CONNECTING:   ledSet(255, 255, 0, 32); break; // Yellow = connecting
+        case WM_FAIL:         ledBreath(255, 0, 0);    break; // Red breath = fail
+      }
+    } else if (strcmp(cs, "thinking") == 0) {
+      ledBreath(255, 165, 0);    // Orange breath = thinking
+    } else if (strcmp(cs, "working") == 0) {
+      ledBreath(0, 255, 0);      // Green breath = working
+    } else if (strcmp(cs, "juggling") == 0) {
+      ledBreath(0, 255, 255);    // Cyan breath = juggling
+    } else {
+      ledBreath(0, 0, 255);      // Blue breath = idle
     }
     // Log state changes
     static WifiMgrState lastSt = WM_IDLE;

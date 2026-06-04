@@ -25,6 +25,33 @@
       defaultAccelerator: "CommandOrControl+Shift+N",
       labelKey: "shortcutLabelPermissionDeny",
     }),
+    // Hardware 2.4G mini-keyboard (bare F-keys, ESP-NOW → USB HID)
+    // 5-button layout: YES / NO / 纠错 / 说人话 / 先计划
+    quickAllow: Object.freeze({
+      persistent: true,
+      defaultAccelerator: "F13",
+      labelKey: "shortcutLabelQuickAllow",
+    }),
+    quickDeny: Object.freeze({
+      persistent: true,
+      defaultAccelerator: "F14",
+      labelKey: "shortcutLabelQuickDeny",
+    }),
+    quickCorrect: Object.freeze({
+      persistent: true,
+      defaultAccelerator: "F15",
+      labelKey: "shortcutLabelQuickCorrect",
+    }),
+    quickPlainLang: Object.freeze({
+      persistent: true,
+      defaultAccelerator: "F16",
+      labelKey: "shortcutLabelQuickPlainLang",
+    }),
+    quickPlan: Object.freeze({
+      persistent: true,
+      defaultAccelerator: "F17",
+      labelKey: "shortcutLabelQuickPlan",
+    }),
   });
 
   const SHORTCUT_ACTION_IDS = Object.freeze(Object.keys(SHORTCUT_ACTIONS));
@@ -141,7 +168,9 @@
       key = normalizedKey;
     }
 
-    if (!key || modifierSet.size === 0) return null;
+    // Bare F13-F24 are valid (used by hardware macro pads / 2.4G keyboards)
+    if (!key) return null;
+    if (modifierSet.size === 0 && !/^F(?:1[3-9]|2[0-4])$/i.test(key)) return null;
 
     const orderedModifiers = MODIFIER_ORDER.filter((modifier) => modifierSet.has(modifier));
     return {
@@ -290,7 +319,8 @@
     const nonMod = normalizeKey(key, code);
     if (!nonMod) return { action: "pending", modifiers: mods };
 
-    if (mods.length === 0) {
+    // Bare F13-F24 are valid (2.4G macro pad keys)
+    if (mods.length === 0 && !/^F(?:1[3-9]|2[0-4])$/i.test(nonMod)) {
       return { action: "reject", reason: "must include modifier" };
     }
 

@@ -49,6 +49,7 @@ const createAgentRuntimeMain = require("./agent-runtime-main");
 const createFloatingWindowRuntime = require("./floating-window-runtime");
 const createPetWindowRuntime = require("./pet-window-runtime");
 const { createHardwareBuddyAdapter } = require("./hardware-buddy-adapter");
+const { createEsp32Adapter } = require("./esp32-adapter");
 const {
   getFocusableLocalHudSessionIds: selectFocusableLocalHudSessionIds,
   getSessionFocusTarget,
@@ -235,6 +236,38 @@ let lastHardwareBuddyStatusLogKey = "";
 let unsubscribeHardwareBuddySettings = null;
 const shortcutHandlers = {
   togglePet: () => togglePetVisibility(),
+  // Hardware 2.4G mini-keyboard (F13-F17) — 5-button layout
+  quickAllow: () => {
+    // YES button: resolve active permission, or send "continue" quick command
+    if (pendingPermissions && pendingPermissions.length > 0) {
+      const entry = pendingPermissions[0];
+      if (entry && entry.id) resolvePermissionEntry(entry.id, "once");
+    } else if (hardwareBuddyAdapter && typeof hardwareBuddyAdapter.createQuickCommand === "function") {
+      hardwareBuddyAdapter.createQuickCommand({ id: "continue", clientRequestId: `kbd-${Date.now()}` });
+    }
+  },
+  quickDeny: () => {
+    // NO button: deny active permission
+    if (pendingPermissions && pendingPermissions.length > 0) {
+      const entry = pendingPermissions[0];
+      if (entry && entry.id) resolvePermissionEntry(entry.id, "deny");
+    }
+  },
+  quickCorrect: () => {
+    if (hardwareBuddyAdapter && typeof hardwareBuddyAdapter.createQuickCommand === "function") {
+      hardwareBuddyAdapter.createQuickCommand({ id: "correct", clientRequestId: `kbd-${Date.now()}` });
+    }
+  },
+  quickPlainLang: () => {
+    if (hardwareBuddyAdapter && typeof hardwareBuddyAdapter.createQuickCommand === "function") {
+      hardwareBuddyAdapter.createQuickCommand({ id: "plain_language", clientRequestId: `kbd-${Date.now()}` });
+    }
+  },
+  quickPlan: () => {
+    if (hardwareBuddyAdapter && typeof hardwareBuddyAdapter.createQuickCommand === "function") {
+      hardwareBuddyAdapter.createQuickCommand({ id: "plan_first", clientRequestId: `kbd-${Date.now()}` });
+    }
+  },
 };
 const _settingsController = createSettingsController({
   prefsPath: PREFS_PATH,
@@ -2274,6 +2307,24 @@ unsubscribeHardwareBuddySettings = _settingsController.subscribeKey("hardwareBud
     hardwareBuddyLog(`settings apply failed: ${err && err.message ? err.message : err}`);
   }
 });
+
+// ── ESP32 DeskPet Adapter ──
+const esp32Adapter = createEsp32Adapter({
+  getPendingPermissions: () => pendingPermissions,
+  resolvePermissionEntry: (...args) => resolvePermissionEntry(...args),
+  themeRuntime,
+  settingsController: _settingsController,
+  log: (msg) => console.log(msg),
+});
+esp32Adapter.start();
+
+// Monitor Clawd state → push to ESP32 (every 500ms)
+setInterval(() => {
+  try {
+    const st = _state.getCurrentState();
+    esp32Adapter.onClawdStateChange(st);
+  } catch (_) {}
+}, 500);
 
 // ── Menu — delegated to src/menu.js ──
 //

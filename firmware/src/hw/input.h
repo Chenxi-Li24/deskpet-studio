@@ -24,6 +24,7 @@ bool          hwInputInit();
 void          hwInputUpdate();
 HwBtn&        hwBtnA();      // Enc1 SW: 确认/批准
 HwBtn&        hwBtnB();      // Enc2 SW: 返回/拒绝
-HwEnc         hwEnc1();      // Enc1 旋转: 导航
+HwEnc         hwEnc1();      // Enc1 旋转: 导航 (每次hwInputUpdate消费)
 HwEnc         hwEnc2();      // Enc2 旋转: 翻页
+HwEnc         hwEnc1Web();   // Enc1 Web累积 (持久累积, 每次读取后复位)
 const HwTouch& hwTouch();    // 触摸屏

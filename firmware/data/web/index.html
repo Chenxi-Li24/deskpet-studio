@@ -1,1 +1,449 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>DeskPet</title><style>body{background:#1a1a2e;color:#e0e0e0;font-family:system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;flex-direction:column}h1{color:#448aff}a{color:#00c853;margin:8px}code{background:#0a0a1a;padding:2px 8px;border-radius:4px}</style></head><body><h1>DeskPet Panel</h1><p><a href="/api/status">GET /api/status</a></p><p><a href="/api/log">GET /api/log</a></p><p><small>API base: <code>deskpet.local</code></small></p></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DeskPet Panel</title>
+<style>
+  /* ═══════════════════════════════════════════════════
+     DeskPet Firmware Web Panel
+     Material-aligned IoT dashboard served by ESP32-S3
+     ═══════════════════════════════════════════════════ */
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --accent:        #d97757;
+    --accent-glow:   rgba(217, 119, 87, 0.30);
+    --bg:            #0f0f13;
+    --surface:       #1a1a24;
+    --surface-raised:#22222e;
+    --text:          #e8e8ed;
+    --text-muted:    #90909e;
+    --text-subtle:   #606070;
+    --border:        rgba(255,255,255,0.06);
+    --border-active: rgba(217, 119, 87, 0.35);
+    --success:       #22c55e;
+    --warning:       #f59e0b;
+    --danger:        #ef4444;
+    --info:          #60a5fa;
+    --radius:        12px;
+    --radius-sm:     8px;
+    --ease:          cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 48px;
+  }
+
+  .dashboard {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 4px 0;
+  }
+  .logo {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #e89275);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 16px var(--accent-glow);
+    flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 20px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2;
+  }
+  .header-text .subtitle {
+    font-size: 11px; color: var(--text-muted); margin-top: 2px;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  }
+
+  /* ── Status Grid ── */
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.3s var(--ease), transform 0.2s var(--ease), box-shadow 0.3s var(--ease);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover {
+    border-color: var(--border-active);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top left, var(--accent-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s var(--ease);
+  }
+  .stat-card:hover::before { opacity: 0.4; }
+
+  .stat-icon { font-size: 20px; line-height: 1; }
+  .stat-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+  }
+  .stat-value {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-value.success { color: var(--success); }
+  .stat-value.warning { color: var(--warning); }
+  .stat-value.danger  { color: var(--danger); }
+  .stat-value.info    { color: var(--info); }
+
+  /* ── Live indicator ── */
+  .live-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-subtle); margin-right: 6px; vertical-align: middle;
+    transition: background 0.3s;
+  }
+  .live-dot.online { background: var(--success); animation: pulse 2s ease-in-out infinite; }
+  .live-dot.offline { background: var(--danger); }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 0 0 var(--success); }
+    50%     { opacity: 0.7; box-shadow: 0 0 0 6px transparent; }
+  }
+
+  /* ── Section ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-raised); color: var(--text-muted);
+  }
+
+  /* ── API list ── */
+  .api-list { display: flex; flex-direction: column; }
+  .api-row {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .api-row:last-child { border-bottom: none; }
+  .api-row:hover { background: var(--surface-raised); }
+  .api-row:active { background: rgba(217,119,87,0.08); }
+
+  .api-method {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
+    text-align: center; letter-spacing: 0.04em;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    flex-shrink: 0;
+  }
+  .api-method.get    { background: rgba(34,197,94,0.15);  color: var(--success); }
+  .api-method.post   { background: rgba(96,165,250,0.15);  color: var(--info); }
+
+  .api-path {
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 12px; color: var(--text); min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .api-desc {
+    font-size: 11px; color: var(--text-muted); text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ── Response area ── */
+  .response-area {
+    display: none;
+    margin: 0 18px 18px;
+    background: #0a0a10;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family: "SF Mono", ui-monospace, Consolas, monospace;
+    font-size: 11px; line-height: 1.55;
+    color: var(--text);
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .response-area.visible { display: block; animation: slideDown 0.25s var(--ease); }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Controls ── */
+  .control-row {
+    display: flex; gap: 8px; padding: 14px 18px; flex-wrap: wrap;
+  }
+  .btn {
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface-raised); color: var(--text);
+    transition: all 0.15s var(--ease);
+  }
+  .btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn:active { transform: scale(0.96); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    background: var(--surface-raised); color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s var(--ease);
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .status-grid { grid-template-columns: 1fr 1fr; }
+    .api-desc { display: none; }
+    .api-row { grid-template-columns: 46px 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🐾</div>
+    <div class="header-text">
+      <h1>DeskPet Panel</h1>
+      <div class="subtitle"><span class="live-dot" id="statusDot"></span><span id="deviceInfo">deskpet.local</span></div>
+    </div>
+  </div>
+
+  <!-- Status Grid -->
+  <div class="status-grid">
+    <div class="stat-card">
+      <div class="stat-icon">🔋</div>
+      <div class="stat-label">Battery</div>
+      <div class="stat-value" id="battery">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📶</div>
+      <div class="stat-label">WiFi RSSI</div>
+      <div class="stat-value" id="wifiRssi">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🧠</div>
+      <div class="stat-label">Free Heap</div>
+      <div class="stat-value" id="freeHeap">--</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⏱️</div>
+      <div class="stat-label">Uptime</div>
+      <div class="stat-value" id="uptime">--</div>
+    </div>
+    <div class="stat-card" id="encCard">
+      <div class="stat-icon">🎛️</div>
+      <div class="stat-label">Encoder</div>
+      <div class="stat-value" id="encoder">·</div>
+    </div>
+    <div class="stat-card" id="clawdCard">
+      <div class="stat-icon">🦀</div>
+      <div class="stat-label">Clawd State</div>
+      <div class="stat-value" id="clawdState">--</div>
+    </div>
+  </div>
+
+  <!-- API Endpoints -->
+  <div class="section">
+    <div class="section-header">📡 API Endpoints <span class="badge" id="apiCount">9</span></div>
+    <div class="api-list" id="apiList"></div>
+    <div class="response-area" id="responseArea"></div>
+  </div>
+
+  <!-- Quick Controls -->
+  <div class="section">
+    <div class="section-header">🎮 Quick Controls</div>
+    <div class="control-row">
+      <button class="btn" onclick="callApi('/api/beep','POST')">🔔 Beep</button>
+      <button class="btn" onclick="callApi('/api/display','POST','{\"mode\":\"pet\"}')">🐱 Pet Mode</button>
+      <button class="btn" onclick="callApi('/api/display','POST','{\"mode\":\"sleep\"}')">😴 Sleep</button>
+      <button class="btn" onclick="callApi('/api/brightness','POST','{\"level\":2}')">💡 Br 50%</button>
+      <button class="btn" onclick="callApi('/api/brightness','POST','{\"level\":4}')">💡 Br 100%</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="section">
+    <div class="section-header">📋 Recent Logs <span class="badge" id="logCount">0</span></div>
+    <div class="response-area visible" id="logArea" style="margin:14px 18px; max-height:200px;">Loading...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_BASE = '';
+  const endpoints = [
+    { method:'GET',  path:'/api/status',     desc:'System status' },
+    { method:'GET',  path:'/api/log',        desc:'Log buffer' },
+    { method:'POST', path:'/api/display',    desc:'Set mode' },
+    { method:'POST', path:'/api/brightness', desc:'Set brightness' },
+    { method:'POST', path:'/api/sound',      desc:'Toggle sound' },
+    { method:'POST', path:'/api/name',       desc:'Set pet name' },
+    { method:'POST', path:'/api/species',    desc:'Set species' },
+    { method:'POST', path:'/api/wifi',       desc:'WiFi config' },
+    { method:'POST', path:'/api/beep',       desc:'Play beep' },
+  ];
+
+  const apiList = document.getElementById('apiList');
+  endpoints.forEach(ep => {
+    const row = document.createElement('div');
+    row.className = 'api-row';
+    row.innerHTML = `<span class="api-method ${ep.method.toLowerCase()}">${ep.method}</span><span class="api-path">${ep.path}</span><span class="api-desc">${ep.desc}</span>`;
+    row.addEventListener('click', () => { if (ep.method === 'GET') callApi(ep.path, ep.method); });
+    apiList.appendChild(row);
+  });
+
+  function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show' + (isError?' error':'');
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  async function callApi(path, method, body) {
+    const respArea = document.getElementById('responseArea');
+    respArea.classList.add('visible');
+    respArea.textContent = `⏳ ${method} ${path} ...`;
+    try {
+      const opts = { method };
+      if (body) { opts.headers = {'Content-Type':'application/json'}; opts.body = body; }
+      const res = await fetch(API_BASE + path, opts);
+      const text = await res.text();
+      let formatted = text;
+      try { formatted = JSON.stringify(JSON.parse(text), null, 2); } catch(e){}
+      respArea.textContent = `✅ ${res.status} ${method} ${path}\n\n${formatted}`;
+      showToast(`${method} ${path} → ${res.status}`);
+      if (path === '/api/status') updateStatusCards(text);
+      if (path === '/api/log') updateLogArea(text);
+    } catch(e) {
+      respArea.textContent = `❌ ${method} ${path}\n\n${e.message}`;
+      showToast(`Failed: ${e.message}`, true);
+    }
+  }
+
+  function updateStatusCards(raw) {
+    try {
+      const s = JSON.parse(raw);
+      const bat = s.battery, wifi = s.wifi, sys = s.sys, pet = s.pet, enc = s.enc1;
+      if (bat != null) {
+        const el = document.getElementById('battery');
+        if (bat.pct === -1) {
+          el.textContent = '⚡ USB';
+          el.className = 'stat-value info';
+        } else {
+          const v = bat.mV ? (bat.mV/1000).toFixed(2)+'V' : (bat.pct != null ? bat.pct+'%' : 'OK');
+          el.textContent = v;
+          el.className = 'stat-value ' + (bat.pct != null && bat.pct < 20 ? 'danger' : 'success');
+        }
+      }
+      if (wifi) {
+        const el = document.getElementById('wifiRssi');
+        el.textContent = wifi.rssi != null ? wifi.rssi+' dBm' : wifi.ssid || '--';
+        el.className = 'stat-value ' + (wifi.rssi != null && wifi.rssi < -70 ? 'warning' : 'info');
+        document.getElementById('deviceInfo').textContent = wifi.ip || wifi.ssid || 'deskpet.local';
+      }
+      if (sys) {
+        document.getElementById('freeHeap').textContent = sys.free_heap ? (sys.free_heap/1024).toFixed(0)+' KB' : '--';
+        document.getElementById('uptime').textContent = sys.uptime_sec ? formatUptime(sys.uptime_sec*1000) : '--';
+      }
+      if (enc) {
+        const el = document.getElementById('encoder');
+        const dir = enc.delta > 0 ? '↻' : enc.delta < 0 ? '↺' : '·';
+        el.textContent = enc.delta !== 0 ? `${dir}${Math.abs(enc.delta)}` : (enc.pressed ? '▼' : '·');
+        el.className = 'stat-value ' + (enc.delta !== 0 ? 'info' : '');
+      }
+      if (s.clawd_state) {
+        const el = document.getElementById('clawdState');
+        const icons = { thinking: '💭', working: '⚡', juggling: '🤹', idle: '💤', sleeping: '😴', sweeping: '🧹' };
+        el.textContent = (icons[s.clawd_state] || '') + ' ' + s.clawd_state;
+      }
+      document.getElementById('statusDot').className = 'live-dot online';
+    } catch(e) {}
+  }
+
+  function updateLogArea(raw) {
+    try {
+      const logs = JSON.parse(raw);
+      const area = document.getElementById('logArea');
+      if (Array.isArray(logs)) {
+        area.textContent = logs.slice(-20).join('\n') || '(empty)';
+        document.getElementById('logCount').textContent = logs.length;
+      }
+    } catch(e) {}
+  }
+
+  function formatUptime(ms) {
+    const s = Math.floor(ms/1000);
+    if (s < 60) return s+'s';
+    if (s < 3600) return Math.floor(s/60)+'m '+(s%60)+'s';
+    return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+  }
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch(API_BASE + '/api/status?_=' + Date.now());
+      updateStatusCards(await res.text());
+      document.getElementById('statusDot').className = 'live-dot online';
+    } catch(e) {
+      document.getElementById('statusDot').className = 'live-dot offline';
+    }
+  }
+  setInterval(refreshStatus, 500);
+  refreshStatus();
+  fetch(API_BASE + '/api/log').then(r => r.text()).then(updateLogArea).catch(()=>{});
+</script>
+</body>
+</html>

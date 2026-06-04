@@ -1,45 +1,46 @@
 * { box-sizing: border-box; }
 
+/* ── extend design-tokens.css ── */
 :root {
-  --bg: #f5f5f7;
-  --panel-bg: #ffffff;
-  --sidebar-bg: #ececef;
+  --bg: var(--color-surface-1);
+  --panel-bg: var(--color-surface-0);
+  --sidebar-bg: var(--color-surface-2);
   --sidebar-hover: rgba(0, 0, 0, 0.05);
-  --sidebar-active: #ffffff;
+  --sidebar-active: var(--color-surface-0);
   --sidebar-active-text: #0a0a0c;
-  --text-primary: #18181b;
-  --text-secondary: #6b6b70;
-  --text-tertiary: #9b9ba0;
-  --border: rgba(0, 0, 0, 0.08);
-  --row-border: rgba(0, 0, 0, 0.06);
-  --accent: #d97757;
-  --accent-hover: #c4684a;
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --border: var(--color-border);
+  --row-border: var(--color-border);
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-accent-hover);
   --switch-off: #d4d4d8;
-  --switch-on: #d97757;
+  --switch-on: var(--color-accent);
   --switch-knob: #ffffff;
   --toast-bg: #18181b;
   --toast-text: #f5f5f7;
   --toast-error: #b91c1c;
-  --scroll-thumb: rgba(0, 0, 0, 0.15);
-  --scroll-thumb-hover: rgba(0, 0, 0, 0.25);
+  --scroll-thumb: var(--color-border-strong);
+  --scroll-thumb-hover: var(--color-text-tertiary);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1c1c1f;
-    --panel-bg: #232327;
+    --bg: var(--color-surface-1);
+    --panel-bg: var(--color-surface-0);
     --sidebar-bg: #18181b;
     --sidebar-hover: rgba(255, 255, 255, 0.05);
     --sidebar-active: #2e2e33;
     --sidebar-active-text: #f5f5f7;
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
-    --border: rgba(255, 255, 255, 0.08);
-    --row-border: rgba(255, 255, 255, 0.06);
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-tertiary: var(--color-text-tertiary);
+    --border: var(--color-border);
+    --row-border: var(--color-border);
     --switch-off: #3f3f46;
     --switch-knob: #f4f4f5;
-    --scroll-thumb: rgba(255, 255, 255, 0.1);
-    --scroll-thumb-hover: rgba(255, 255, 255, 0.2);
+    --scroll-thumb: var(--color-border-strong);
+    --scroll-thumb-hover: var(--color-text-tertiary);
   }
 }
 

@@ -6,6 +6,7 @@
 
 void webServerInit();         // start server, mDNS, register all routes
 bool webServerRunning();      // true when WiFi connected + server up
+const char* webClawdState();  // current Clawd state from /api/led
 
 // Circular log buffer for /api/log
 void   webLog(const char* fmt, ...);

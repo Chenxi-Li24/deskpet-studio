@@ -9,10 +9,12 @@
 #include "stats.h"
 #include "hw/power.h"
 #include "hw/display.h"
+#include "hw/input.h"
 #include "hw/audio.h"
 
 static AsyncWebServer server(80);
 static bool s_webRunning = false;
+static String s_clawdState = "idle";
 
 // Log buffer
 static const size_t LOG_CAP = 100;
@@ -95,8 +97,26 @@ static void handleStatus(AsyncWebServerRequest* req) {
 
   extern bool buddyMode, gifAvailable;
   doc["display"] = !gifAvailable ? "pet" : (buddyMode ? "pet" : "normal");
+  doc["clawd_state"] = s_clawdState;
+
+  HwEnc enc1 = hwEnc1Web();
+  JsonObject encObj = doc["enc1"].to<JsonObject>();
+  encObj["delta"]   = enc1.delta;
+  encObj["pressed"] = enc1.pressed;
 
   serializeJson(doc, *resp);
+  addCors(resp);
+  req->send(resp);
+}
+
+// POST /api/led — Clawd state → ESP32 LED color
+static void onLed(AsyncWebServerRequest* req, JsonVariant& json) {
+  const char* color = json["color"];
+  if (color) {
+    s_clawdState = color;
+    Serial.printf("[led] clawd state → %s\n", color);
+  }
+  AsyncWebServerResponse* resp = req->beginResponse(200, "application/json", "{\"ok\":true}");
   addCors(resp);
   req->send(resp);
 }
@@ -228,6 +248,7 @@ void webServerInit() {
   server.on("/api/sound",      HTTP_POST, onSound);
   server.on("/api/name",       HTTP_POST, onName);
   server.on("/api/species",    HTTP_POST, onSpecies);
+  server.on("/api/led",        HTTP_POST, onLed);
   server.on("/api/wifi",       HTTP_POST, onWifi);
   server.on("/api/beep",       HTTP_POST, onBeep);
 
@@ -264,3 +285,4 @@ void webServerInit() {
 }
 
 bool webServerRunning() { return s_webRunning && wifiMgrConnected(); }
+const char* webClawdState() { return s_clawdState.c_str(); }

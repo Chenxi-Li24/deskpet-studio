@@ -10,7 +10,7 @@
 #endif
 
 static HwBtn  s_btnA, s_btnB;
-static HwEnc  s_enc1, s_enc2;
+static HwEnc  s_enc1, s_enc2, s_enc1Web;
 static HwTouch s_touch;
 
 static volatile int8_t s_enc1Delta = 0;
@@ -55,19 +55,23 @@ bool hwInputInit() {
   }
 #endif
 
-  // --- 编码器1 ---
+  // --- 编码器1 (VCC 复用按键检测) ---
   pinMode(PIN_ENC1_CLK, INPUT_PULLUP);
   pinMode(PIN_ENC1_DT,  INPUT_PULLUP);
-  pinMode(PIN_ENC1_SW,  INPUT_PULLUP);
+  // GPIO8 = VCC供电 + 按键复用: 平时OUTPUT HIGH给模块供电
+  pinMode(PIN_ENC1_SW, OUTPUT);
+  digitalWrite(PIN_ENC1_SW, HIGH);
   attachInterrupt(digitalPinToInterrupt(PIN_ENC1_CLK), enc1ISR, CHANGE);
 
-  // --- 编码器2 ---
+  // --- 编码器2 (暂不启用 — 只有一个 EC11) ---
+#if 0
   pinMode(PIN_ENC2_CLK, INPUT_PULLUP);
   pinMode(PIN_ENC2_DT,  INPUT_PULLUP);
   pinMode(PIN_ENC2_SW,  INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_ENC2_CLK), enc2ISR, CHANGE);
+#endif
 
-  Serial.println("hwInput: EC11 x2 OK");
+  Serial.println("hwInput: EC11 x1 OK");
   return true;
 }
 
@@ -98,31 +102,76 @@ void hwInputUpdate() {
   }
 #endif
 
-  // --- 编码器1 SW → BtnA ---
-  bool sw1 = !digitalRead(PIN_ENC1_SW);
+  // --- 编码器1 SW → BtnA (VCC复用: analogRead, 简单可靠) ---
+  static uint32_t lastBtnCheck = 0;
+  static bool     cachedSw = false;
+  if (now - lastBtnCheck > 200) {    // ~5Hz, 减少VCC中断
+    lastBtnCheck = now;
+    noInterrupts();
+    pinMode(PIN_ENC1_SW, INPUT);         // 高阻输入, 电容保持VCC电荷
+    interrupts();
+    delay(3);                            // 3ms放电: 按下→~2500, 不按→~4000+
+    noInterrupts();
+    int v0 = analogRead(PIN_ENC1_SW);
+    delay(1);
+    int v1 = analogRead(PIN_ENC1_SW);
+    delay(1);
+    int v2 = analogRead(PIN_ENC1_SW);
+    // 3次采样取中值, 过滤偶发跳变
+    int v;
+    if (v0 <= v1 && v1 <= v2) v = v1;
+    else if (v2 <= v1 && v1 <= v0) v = v1;
+    else if (v1 <= v0 && v0 <= v2) v = v0;
+    else if (v2 <= v0 && v0 <= v1) v = v0;
+    else v = v2;
+    cachedSw = (v < 3500);               // 按下<3500, 松开>3500, 两侧余量充足
+    Serial.printf("BTN: adc=%d pressed=%d\n", v, cachedSw);
+    pinMode(PIN_ENC1_SW, OUTPUT);
+    digitalWrite(PIN_ENC1_SW, HIGH);
+    interrupts();
+  }
+  bool sw1 = cachedSw;
   s_btnA.wasPressed  = sw1 && !s_btnA.isPressed;
   s_btnA.wasReleased = !sw1 && s_btnA.isPressed;
   if (s_btnA.wasPressed) s_btnA.pressedAt = now;
   s_btnA.isPressed = sw1;
 
-  // --- 编码器2 SW → BtnB ---
+  // --- 编码器2 SW → BtnB (暂不启用) ---
+#if 0
   bool sw2 = !digitalRead(PIN_ENC2_SW);
   s_btnB.wasPressed  = sw2 && !s_btnB.isPressed;
   s_btnB.wasReleased = !sw2 && s_btnB.isPressed;
   if (s_btnB.wasPressed) s_btnB.pressedAt = now;
   s_btnB.isPressed = sw2;
+#endif
 
   // --- 旋转 delta ---
   noInterrupts();
-  s_enc1.delta = s_enc1Delta; s_enc1Delta = 0;
-  s_enc2.delta = s_enc2Delta; s_enc2Delta = 0;
+  int8_t raw = s_enc1Delta; s_enc1Delta = 0;
   interrupts();
+  s_enc1.delta = raw;
+  // 死区: 按键时抑制 |delta|<3 忽略
+  if (sw1)      s_enc1.delta = 0;
+  else if (abs(raw) < 3) s_enc1.delta = 0;
+
+  s_enc2.delta = 0;           // ENC2 暂不启用
   s_enc1.pressed = sw1; s_enc1.justPressed = s_btnA.wasPressed;
-  s_enc2.pressed = sw2; s_enc2.justPressed = s_btnB.wasPressed;
+  s_enc2.pressed = false; s_enc2.justPressed = false;
+
+  // Web accumulator — persists across hwInputUpdate() calls
+  s_enc1Web.delta += s_enc1.delta;
+  s_enc1Web.pressed = s_enc1.pressed;
+  s_enc1Web.justPressed = s_enc1Web.justPressed || s_enc1.justPressed;
 }
 
 HwBtn&        hwBtnA()  { return s_btnA; }
 HwBtn&        hwBtnB()  { return s_btnB; }
 HwEnc         hwEnc1()  { return s_enc1; }
 HwEnc         hwEnc2()  { return s_enc2; }
+HwEnc         hwEnc1Web() {
+  HwEnc ret = s_enc1Web;
+  s_enc1Web.delta = 0;
+  s_enc1Web.justPressed = false;
+  return ret;
+}
 const HwTouch& hwTouch() { return s_touch; }
